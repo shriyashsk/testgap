@@ -1,3 +1,5 @@
+from app.config import settings
+from app.services.razorpay_service import razorpay_client
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -22,6 +24,51 @@ class CreateSettlementRequest(BaseModel):
     currency: str = "USD"
     note: Optional[str] = None
     upi_transaction_ref: Optional[str] = None
+
+class CreateRazorpayOrderRequest(BaseModel):
+    paid_by_user_id: str
+    paid_to_user_id: str
+    amount: float
+    currency: str = "USD"
+    note: Optional[str] = None
+
+@router.post("/groups/{group_id}/settlements/razorpay-order")
+async def create_razorpay_order(group_id: str, body: CreateRazorpayOrderRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    user = await get_current_user(request, db)
+
+    # Razorpay test mode requires INR — this only affects the gateway's
+    # display amount, the real settlement still stores your group's currency
+    amount_paise = int(round(body.amount * 100))
+
+    order = razorpay_client.order.create({
+        "amount": amount_paise,
+        "currency": "INR",
+        "payment_capture": 1,
+    })
+
+    settlement = Settlement(
+        group_id=group_id,
+        paid_by_user_id=body.paid_by_user_id,
+        paid_to_user_id=body.paid_to_user_id,
+        amount=Decimal(str(body.amount)),
+        currency=body.currency,
+        note=body.note,
+        status="pending",
+        razorpay_order_id=order["id"],
+    )
+    db.add(settlement)
+    await db.commit()
+
+    return {
+        "success": True,
+        "data": {
+            "settlement_id": settlement.id,
+            "razorpay_order_id": order["id"],
+            "razorpay_key_id": settings.RAZORPAY_KEY_ID,
+            "amount": amount_paise,
+            "currency": "INR",
+        },
+    }
 
 
 @router.post("/groups/{group_id}/settlements")

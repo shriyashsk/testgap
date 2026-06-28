@@ -160,6 +160,8 @@ class Settlement(Base):
     currency = Column(String(10), nullable=False)
     note = Column(Text, nullable=True)
     upi_transaction_ref = Column(String(255), nullable=True)
+    razorpay_order_id = Column(String(255), nullable=True)
+    razorpay_payment_id = Column(String(255), nullable=True)
     status = Column(String(50), default="confirmed")
     settlement_date = Column(Date, default=date.today)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

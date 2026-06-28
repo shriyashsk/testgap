@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:5173"
     BACKEND_URL: str = "http://localhost:8000"
     CORS_ORIGINS: str = "http://localhost:5173"
+    RAZORPAY_KEY_ID: str
+    RAZORPAY_KEY_SECRET: str
+    RAZORPAY_WEBHOOK_SECRET: str
 
     @property
     def cors_origins_list(self) -> List[str]:
